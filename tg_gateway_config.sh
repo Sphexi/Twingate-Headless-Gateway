@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # This bash script will configure the underlying Ubuntu operating system to
 # run as a Twingate Internet gateway for the local network.
 # This script is intended to be run on a fresh Ubuntu 22.04 LTS installation, 
