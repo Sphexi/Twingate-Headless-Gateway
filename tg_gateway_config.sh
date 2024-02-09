@@ -29,6 +29,8 @@ if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
     /path/to/twingate-service-key.json - The location of the Twingate service key file
     10.0.0.0/24 - The local network subnet
     "
+  exit 0
+fi
 
 # Check if the script is being run as root or with sudo
 if [ "$EUID" -ne 0 ]; then
@@ -85,9 +87,13 @@ $PKG_MANAGER update
 # Install bind9
 $PKG_MANAGER install -y bind9
 
-# Disable local DNS server
-systemctl stop systemd-resolved
-systemctl disable systemd-resolved
+# Install iptables-persistent
+$PKG_MANAGER install -y iptables-persistent
+
+# Install Twingate client
+$PKG_MANAGER install -y curl
+curl https://binaries.twingate.com/client/linux/install.sh | sudo bash
+sudo twingate setup --headless $TWINGATE_SERVICE_KEY_FILE
 
 # Configure bind9
 cat <<EOF > /etc/bind/named.conf.options
@@ -116,11 +122,6 @@ sed -i 's/OPTIONS="-u bind"/OPTIONS="-u bind -4"/' /etc/default/named
 systemctl restart bind9
 systemctl restart named
 
-# Install Twingate client
-$PKG_MANAGER install -y curl
-curl https://binaries.twingate.com/client/linux/install.sh | sudo bash
-sudo twingate setup --headless $TWINGATE_SERVICE_KEY_FILE
-
 # Enable IPv4 forwarding
 echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf
 sysctl -p
@@ -130,3 +131,10 @@ sudo iptables -t nat -A POSTROUTING -s 0.0.0.0/24 -o sdwan0 -j MASQUERADE
 
 # Persist iptables rules for reboot
 iptables-save > /etc/iptables/rules.v4
+
+# Disable local DNS server
+systemctl stop systemd-resolved
+systemctl disable systemd-resolved
+
+# Start Twingate client
+twingate start
