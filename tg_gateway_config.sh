@@ -75,7 +75,6 @@ MAIN_NETWORK_INTERFACE_IP=$(ip -4 addr show $(ip route show default | awk '/defa
 if [ -x "$(command -v apt-get)" ]; then
   PKG_MANAGER="apt-get"
 elif [ -x "$(command -v yum)" ]; then
-  PKG_MANAGER="yum"
 else
   echo "No supported package manager found. Exiting."
   exit 1
@@ -94,6 +93,13 @@ $PKG_MANAGER install -y iptables-persistent
 $PKG_MANAGER install -y curl
 curl https://binaries.twingate.com/client/linux/install.sh | sudo bash
 sudo twingate setup --headless $TWINGATE_SERVICE_KEY_FILE
+
+# Start Twingate client
+twingate start
+
+# Disable local DNS server
+systemctl stop systemd-resolved
+systemctl disable systemd-resolved
 
 # Configure bind9
 cat <<EOF > /etc/bind/named.conf.options
@@ -132,9 +138,5 @@ sudo iptables -t nat -A POSTROUTING -s 0.0.0.0/24 -o sdwan0 -j MASQUERADE
 # Persist iptables rules for reboot
 iptables-save > /etc/iptables/rules.v4
 
-# Disable local DNS server
-systemctl stop systemd-resolved
-systemctl disable systemd-resolved
 
-# Start Twingate client
-twingate start
+
